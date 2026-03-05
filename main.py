@@ -36,9 +36,13 @@ def main():
 
     while True:
 
-        user_input = input("\nYou: ")
+        user_input = input("\nYou: ").strip()
 
-        if user_input.lower() in ["exit", "quit"]:
+        # normalize once
+        command = user_input.lower()
+
+        if command in ["exit", "quit"]:
+            print("Goodbye!")
             break
 
         query = sanitize_input(user_input)

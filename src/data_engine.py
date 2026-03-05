@@ -5,9 +5,10 @@ from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
+from langchain_classic.text_splitter import RecursiveCharacterTextSplitter 
+
 
 load_dotenv()
-
 api = os.getenv("OPENAI_API_KEY")
 
 class DataEngine:
@@ -34,21 +35,20 @@ Description:
 {row['company_background']}
 """
 
-            documents.append(
-                Document(
-                    page_content=content,
-                    metadata={
-                        "company": row["Company"],
-                        "sector": row["primary_sector"]
-                    }
-                )
-            )
+            documents.append(Document(page_content=content))
 
-        embeddings = OpenAIEmbeddings(
-            model="text-embedding-3-small",
-            api_key=api
+        # -------- Chunking --------
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=100
         )
 
-        vector_db = FAISS.from_documents(documents, embeddings)
+        split_docs = splitter.split_documents(documents)
+
+        embeddings = OpenAIEmbeddings(
+            model="text-embedding-3-small"
+        )
+
+        vector_db = FAISS.from_documents(split_docs, embeddings)
 
         return vector_db

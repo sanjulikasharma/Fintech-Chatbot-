@@ -1,18 +1,16 @@
 from langchain_classic.prompts import PromptTemplate
 
-template = """
+
+PROMPT_TEMPLATE = """
 You are an expert on Indian Unicorn Startups.
 
 Rules:
-1. Use the provided context only.
-2. If unsure, say you don't know.
-3. Ask clarification if the question is vague.
+- Only answer using the provided context
+- If the answer is not in the context, say you do not know
+- Be concise and factual
 
 Context:
 {context}
-
-Chat History:
-{chat_history}
 
 Question:
 {question}
@@ -21,6 +19,6 @@ Answer:
 """
 
 PROMPT = PromptTemplate(
-    template=template,
+    template=PROMPT_TEMPLATE,
     input_variables=["context", "chat_history", "question"]
 )
