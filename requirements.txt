@@ -1,0 +1,11 @@
+langchain
+langchain-google-genai
+langchain-community
+langchain-classic
+pandas
+faiss-cpu
+sentence-transformers
+python-dotenv
+langfuse
+openai 
+langchain_openai 
