@@ -1,5 +1,6 @@
 import logging
 from langfuse import get_client
+import uuid
 
 from src.data_engine import DataEngine
 from src.retriever import get_retriever
@@ -7,6 +8,7 @@ from src.chatbot import UnicornChatbot
 
 from dotenv import load_dotenv
 import os
+
 load_dotenv()
 
 api = os.getenv("OPENAI_API_KEY")
@@ -28,6 +30,9 @@ def main():
 
     print("Initializing Startup Insight Bot...")
 
+    # generate session id
+    session_id = str(uuid.uuid4())
+
     engine = DataEngine("data/startups.csv")
     retriever = get_retriever(engine.vector_db)
     bot = UnicornChatbot(retriever)
@@ -37,8 +42,6 @@ def main():
     while True:
 
         user_input = input("\nYou: ").strip()
-
-        # normalize once
         command = user_input.lower()
 
         if command in ["exit", "quit"]:
@@ -47,7 +50,12 @@ def main():
 
         query = sanitize_input(user_input)
 
-        logging.info(f"User query: {query}")
+        # structured logging for query
+        logging.info({
+            "session_id": session_id,
+            "event": "user_query",
+            "query": query
+        })
 
         try:
 
@@ -56,19 +64,33 @@ def main():
                 name="chatbot-request"
             ) as span:
 
-                span.update(input={"query": query})
+                span.update(
+                    input= {"query": query},
+                    metadata= {"session_id": session_id})
+                
 
                 answer = bot.ask(query)
 
-                span.update(output={"response": answer})
+                span.update(
+                    output = {"response": answer}
+                )
 
                 print("Bot:", answer)
-
-                logging.info(f"Bot response: {answer}")
+                # structured logging for response
+                logging.info({
+                    "session_id": session_id,
+                    "event": "bot_response",
+                    "response": answer
+                })
 
         except Exception as e:
 
-            logging.error(f"Error: {str(e)}")
+            logging.error({
+                "session_id": session_id,
+                "event": "error",
+                "error": str(e)
+            })
+
             print("ERROR:", e)
 
 

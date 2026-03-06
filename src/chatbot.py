@@ -4,6 +4,8 @@ from langchain_classic.memory import ConversationBufferMemory
 
 from src.prompt import PROMPT_TEMPLATE
 from src.reranker1 import Reranker
+from src.query_analyzer import analyze_query
+import json
 
 from src.cache import get_cached, set_cache
 import os 
@@ -32,6 +34,11 @@ class UnicornChatbot:
         if self.history:
             recent_context = " ".join([h["user"] for h in self.history[-2:]])
             context_query = f"{recent_context} {query}"
+
+        # Ambiguity Checker 
+        is_ambiguous, clarification = analyze_query(context_query)
+        if is_ambiguous: 
+            return clarification
 
         # Retrieval
         docs = self.retriever.invoke(context_query)
