@@ -3,7 +3,7 @@ from langchain_classic.chains import ConversationalRetrievalChain
 from langchain_classic.memory import ConversationBufferMemory
 
 from src.prompt import PROMPT_TEMPLATE
-from src.reranker import Reranker
+from src.reranker1 import Reranker
 
 from src.cache import get_cached, set_cache
 import os 
@@ -14,24 +14,41 @@ class UnicornChatbot:
 
     def __init__(self, retriever):
         self.retriever = retriever
-        self.reranker = Reranker()
+        self.reranker1 = Reranker()
+        self.history = [] #conversational memory
 
     def ask(self, query):
-        cached = get_cached(query)
 
+        cache_key = query
+        if self.history:
+            cache_key = f"{self.history[-1]['user']} {query}"
+
+        cached = get_cached(cache_key)
         if cached:
             return cached
-        docs = self.retriever.invoke(query)
 
+        # Query rewriting
+        context_query = query
+        if self.history:
+            recent_context = " ".join([h["user"] for h in self.history[-2:]])
+            context_query = f"{recent_context} {query}"
 
-        # -------- Reranking --------
-        docs = self.reranker.rerank(query, docs)
+        # Retrieval
+        docs = self.retriever.invoke(context_query)
+
+        # Reranking
+        docs = self.reranker1.rerank(context_query, docs)
 
         context = "\n\n".join([d.page_content for d in docs])
 
+        history_text = "\n".join(
+            [f"User: {h['user']}\nBot: {h['bot']}" for h in self.history[-5:]]
+        )
+
         prompt = PROMPT_TEMPLATE.format(
             context=context,
-            question=query
+            question=query,
+            history=history_text
         )
 
         response = openai.chat.completions.create(
@@ -39,7 +56,13 @@ class UnicornChatbot:
             messages=[{"role": "user", "content": prompt}]
         )
 
-        answer =  response.choices[0].message.content
-        set_cache(query, answer)
+        answer = response.choices[0].message.content
+
+        set_cache(cache_key, answer)
+
+        self.history.append({"user": query, "bot": answer})
+
+        if len(self.history) > 10:
+            self.history.pop(0)
 
         return answer if answer else "I couldn't find the answer in the dataset"

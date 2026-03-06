@@ -69,7 +69,6 @@ def main():
         except Exception as e:
 
             logging.error(f"Error: {str(e)}")
-
             print("ERROR:", e)
 
 

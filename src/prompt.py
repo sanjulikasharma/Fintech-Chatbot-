@@ -8,6 +8,10 @@ Rules:
 - Only answer using the provided context
 - If the answer is not in the context, say you do not know
 - Be concise and factual
+-Use the conversation history to understand follow-up questions. 
+
+Conversation History: 
+{history}
 
 Context:
 {context}
