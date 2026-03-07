@@ -1,6 +1,7 @@
 from langfuse.openai import openai
 import os
-
+import json 
+import re 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
@@ -31,16 +32,35 @@ User Query:
 
 Return JSON only.
 """
+    try: 
 
-    response = openai.chat.completions.create(
+        response = openai.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "system", "content": "You output only valid JSON. No explanations, no markdown."},
+        {"role": "user", "content": prompt}], 
+        temperature = 0 # Deterministic output for parsing
     )
 
-    output = response.choices[0].message.content.strip()
+        output = response.choices[0].message.content.strip()
+        
+        # Extract JSON if wrapped in markdown or extra text
+        json_match = re.search(r'\{[\s\S]*\}', output)
+        if json_match:
+            output = json_match.group()
+        
+        result = json.loads(output)
+        
+        is_ambiguous = result.get("status") == "ambiguous"
+        clarification = result.get("clarification") if is_ambiguous else None
+        
+        return is_ambiguous, clarification
 
-    if output.startswith("AMBIGUOUS"): 
-        clarification = output.replace("AMBIGUOUS:", "").strip()
-        return True, clarification
+    except (json.JSONDecodeError, KeyError, AttributeError) as e:
+        # Fallback: if JSON parsing fails, treat as clear to avoid blocking user
+        print(f"[WARN] Query analysis failed: {e}")
+        return False, None
     
-    return False, None 
+    except Exception as e:
+        # Catch-all for API/network errors
+        print(f"[ERROR] analyze_query exception: {e}")
+        return False, None

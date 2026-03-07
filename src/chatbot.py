@@ -5,6 +5,8 @@ from langchain_classic.memory import ConversationBufferMemory
 from src.prompt import PROMPT_TEMPLATE
 from src.reranker1 import Reranker
 from src.query_analyzer import analyze_query
+from src.query_router import route_query 
+
 import json
 
 from src.cache import get_cached, set_cache
@@ -35,13 +37,22 @@ class UnicornChatbot:
             recent_context = " ".join([h["user"] for h in self.history[-2:]])
             context_query = f"{recent_context} {query}"
 
-        # Ambiguity Checker 
-        is_ambiguous, clarification = analyze_query(context_query)
-        if is_ambiguous: 
-            return clarification
+        # --- 3. Route + Analyze the REWRITTEN query ---
+        query_type = route_query(context_query)  # ROUTE after rewriting
+        
+        # If router says CLARIFICATION, get specific question from analyzer
+        if query_type == "CLARIFICATION":
+            is_ambiguous, clarification = analyze_query(context_query)
+            if clarification:
+                return clarification
 
-        # Retrieval
-        docs = self.retriever.invoke(context_query)
+        # --- 4. Retrieval Strategy based on query type ---
+        if query_type == "FILTER":
+            # Broader search for list/filter questions
+            docs = self.retriever.invoke(context_query, search_kwargs={"k": 10})
+        else:
+            # Standard precision-focused retrieval
+            docs = self.retriever.invoke(context_query)
 
         # Reranking
         docs = self.reranker1.rerank(context_query, docs)

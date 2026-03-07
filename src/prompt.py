@@ -24,5 +24,5 @@ Answer:
 
 PROMPT = PromptTemplate(
     template=PROMPT_TEMPLATE,
-    input_variables=["context", "chat_history", "question"]
+    input_variables=["context", "history", "question"]
 )
